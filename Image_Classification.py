@@ -7,7 +7,7 @@ from skimage.feature import hog
 from sklearn import metrics
 
 
-def read_img(path, n=25 ** 2):
+def read_img(path, n=40 ** 2):
     """
     Read image and store it as an array, given the image path.
     Returns the 3 dimensional image array.
@@ -35,23 +35,6 @@ def testModel(pred, test):
     print("---------------------------------------------------------------------")
 
 ###### Load Data #####
-show9 = True
-if show9:
-    # show 9 fails
-    for i in range(9):
-        plt.subplot(330 + 1 + i)
-        fn = 'data/prints/fail/failpic' + str(i) + '.jpg'
-        image = read_img(fn)
-        plt.imshow(image)
-    plt.show()
-    # show 9 passes
-    for i in range(9):
-        plt.subplot(330 + 1 + i)
-        fn = 'data/prints/okay/okaypic' + str(i) + '.jpg'
-        image = read_img(fn)
-        plt.imshow(image)
-    plt.show()
-
 dirf = 'data/prints/fail/'
 dirp = 'data/prints/okay/'
 
@@ -88,6 +71,28 @@ if showhogs:
     ax[1].set_title("Failed Example")
     plt.show()
 
+show9 = True
+if show9:
+    for i in range(9):
+        plt.subplot(330 + 1 + i)
+        im = images[i]
+        plt.imshow(im)
+    plt.show()
+    for i in range(9):
+        plt.subplot(330 + 1 + i)
+        im = hogimage[i]
+        plt.imshow(im)
+    plt.show()
+    for i in range(9):
+        plt.subplot(330 + 1 + i)
+        im = images[-i-1]
+        plt.imshow(im)
+    plt.show()
+    for i in range(9):
+        plt.subplot(330 + 1 + i)
+        im = hogimage[-i-1]
+        plt.imshow(im)
+    plt.show()
 print("Data Loaded Properly")
 
 
