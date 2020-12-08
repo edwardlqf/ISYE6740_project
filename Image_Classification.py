@@ -11,6 +11,13 @@ from sklearn.linear_model import SGDClassifier
 import pickle
 
 
+##### Adjustable Parameters #####
+predvid = 6  # Which video to make a prediction on (numbers 1 through 6)
+ppc = 12  # HOG parameter (pixels per cell)
+cpb = 3  # HOG parameter (cells per block)
+n = 20 ** 2  # Downsampled size of image
+rint = 14 #randint(0, 100)  # Random State
+
 def read_img(path, n=10 ** 2):
     """
     Read image and store it as an array, given the image path.
@@ -30,13 +37,6 @@ def numericalSort(value):
     parts[1::2] = map(int, parts[1::2])
     return parts
 
-
-##### Adjustable Parameters #####
-predvid = 6  # Which video to make a prediction on
-ppc = 12  # HOG parameter (pixels per cell)
-cpb = 3  # HOG parameter (cells per block)
-n = 20 ** 2  # Downsampled size of image
-rint = randint(0, 100)  # Random State
 
 ###### Load Data #####
 print("Loading data and preprocessing: ")
@@ -191,7 +191,7 @@ if dothis:
     probabilities = sgd_clf.predict_proba(X_predict) * 100
 
 
-def makePred(path, model, figures=True, ppc=12, cpb=2, n=16 ** 2):
+def makePred(path, model, figures=True, ppc=12, cpb=3, n=20 ** 2):
     import numpy as np
     from PIL import Image
     from skimage.feature import hog
@@ -242,7 +242,7 @@ otprob = []
 otpredi = []
 for i, file in enumerate(sorted(listdir(dire), key=numericalSort)):
     path = dire + file
-    if i in [1, 15, 25, 38]:
+    if i in [1, 12, 15, 20, 25, 30, 38]:
         a, b = makePred(path, model=mod, ppc=ppc, cpb=cpb, n=n, figures=True)
     else:
         a, b = makePred(path, model=mod, ppc=ppc, cpb=cpb, n=n, figures=False)
