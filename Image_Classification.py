@@ -11,7 +11,14 @@ from sklearn.linear_model import SGDClassifier
 import pickle
 
 
-def read_img(path, n=10**2):
+##### Adjustable Parameters #####
+predvid = 6  # Which video to make a prediction on (numbers 1 through 6)
+ppc = 12  # HOG parameter (pixels per cell)
+cpb = 3  # HOG parameter (cells per block)
+n = 20 ** 2  # Downsampled size of image
+rint = 14 #randint(0, 100)  # Random State
+
+def read_img(path, n=10 ** 2):
     """
     Read image and store it as an array, given the image path.
     Returns the 3 dimensional image array.
@@ -22,24 +29,30 @@ def read_img(path, n=10**2):
     img.close()
     return img_arr
 
-##### Adjustable Parameters #####
-ppc = 12
-cpb = 2
-n = 16**2
-rint = randint(0, 100)
+
+def numericalSort(value):
+    import re
+    numbers = re.compile(r'(\d+)')
+    parts = numbers.split(value)
+    parts[1::2] = map(int, parts[1::2])
+    return parts
+
 
 ###### Load Data #####
+print("Loading data and preprocessing: ")
 dirf = 'data/prints/fail/'
 dirp = 'data/prints/okay/'
-nump = len(os.listdir(dirp))
-numf = len(os.listdir(dirp))
-numtot = nump + numf
+numtot = 0
+for root, dirs, files in os.walk('data/'):
+    numtot += len(files)
+numtotr = range(round(numtot * 0.1), numtot + round(numtot * 0.1) + 1, round(numtot * 0.1))
 
 images = []
 labels = []
 hogs = []
 hogimage = []
 i = 0
+
 # fails
 for file in listdir(dirf):
     im = read_img(dirf + file, n=n)
@@ -51,8 +64,8 @@ for file in listdir(dirf):
     hogimage.append(him)
     images.append(im)
     labels.append(1)
-    if i % 12 == 0:
-        print(i / numtot * 100, "%")
+    if i in numtotr:
+        print(str(round(i / numtot * 100, -1)) + '%')
     i += 1
 
 # passes
@@ -66,17 +79,44 @@ for file in listdir(dirp):
     hogimage.append(him)
     images.append(im)
     labels.append(0)
-    if i % 12 == 0:
-        print(i / numtot * 100, "%")
+    if i in numtotr:
+        print(str(round(i / numtot * 100, -1)) + '%')
     i += 1
 
+# videos
+trainvids = [1, 2, 3, 4, 5, 6]
+trainvids.remove(predvid)
+d = {1: 22, 2: 30, 3: 25, 4: 37, 5: 32, 6: 15}
+for v in trainvids:
+    dire = 'data/image_stream/video' + str(v) + '/'
+    for j, file in enumerate(sorted(listdir(dire), key=numericalSort)):
+        ot = 0
+        if j >= d[v]:
+            ot = 1
+        im = read_img(dire + file, n=n)
+        h, him = hog(im, visualize=True,
+                     pixels_per_cell=(ppc, ppc),
+                     cells_per_block=(cpb, cpb),
+                     block_norm="L2-Hys")
+        hogs.append(h)
+        hogimage.append(him)
+        images.append(im)
+        labels.append(ot)
+        if i in numtotr:
+            print(str(round(i / numtot * 100, -1)) + '%')
+        i += 1
+
+corinds = [k for k in range(len(labels)) if labels[k] == 0]
+errorinds = [k for k in range(len(labels)) if labels[k] == 1]
+
+# Creating Images
 showhogs = True
 if showhogs:
     fig, ax = plt.subplots(nrows=1, ncols=2)
     fig.suptitle("Histogram of Oriented Gradients (hog)")
-    ax[0].imshow(hogimage[-1])
+    ax[0].imshow(hogimage[corinds[0]])
     ax[0].set_title("Passed Example")
-    ax[1].imshow(hogimage[0])
+    ax[1].imshow(hogimage[errorinds[0]])
     ax[1].set_title("Failed Example")
     ax[0].set_xticks([])
     ax[0].set_yticks([])
@@ -90,31 +130,32 @@ if show9:
     for i in range(9):
         plt.subplot(330 + 1 + i)
         plt.axis('off')
-        im = images[i]
+        im = images[corinds[i]]
         plt.imshow(im)
     plt.show()
     for i in range(9):
         plt.subplot(330 + 1 + i)
         plt.axis('off')
-        im = hogimage[i]
+        im = hogimage[corinds[i]]
         plt.imshow(im)
     plt.show()
     for i in range(9):
         plt.subplot(330 + 1 + i)
         plt.axis('off')
-        im = images[-i - 1]
+        im = images[errorinds[i]]
         plt.imshow(im)
     plt.show()
     for i in range(9):
         plt.subplot(330 + 1 + i)
         plt.axis('off')
-        im = hogimage[-i - 1]
+        im = hogimage[errorinds[i]]
         plt.imshow(im)
     plt.axis('off')
     plt.show()
 print("Preprocessing complete")
 
 ##### Run Model #####
+print("Running Model: ")
 X = np.array(hogs)
 y = labels
 X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_size=0.25, random_state=rint)
@@ -122,6 +163,7 @@ X_train, X_test, y_train, y_test = model_selection.train_test_split(X, y, test_s
 sgd_clf = SGDClassifier(random_state=rint, max_iter=1000, tol=1e-4, penalty='l2', loss="log")
 sgd_clf.fit(X_train, y_train)
 y_pred = sgd_clf.predict(X_test)
+print('Model Metrics:')
 print(metrics.classification_report(y_test, y_pred))
 
 pickle.dump(sgd_clf, open("SGDModel.pkl", 'wb'))
@@ -149,11 +191,10 @@ if dothis:
     probabilities = sgd_clf.predict_proba(X_predict) * 100
 
 
-def makePred(path, model, figures=True, ppc=12, cpb=2, n=16**2):
+def makePred(path, model, figures=True, ppc=12, cpb=3, n=20 ** 2):
     import numpy as np
     from PIL import Image
     from skimage.feature import hog
-
     imgin = Image.open(path)
     img = imgin.convert('L').resize((n, n), Image.ANTIALIAS)
     img_arr = np.array(img, dtype='int32')
@@ -173,9 +214,9 @@ def makePred(path, model, figures=True, ppc=12, cpb=2, n=16**2):
         ax.set_xticks([])
         ax.set_yticks([])
         if pred == 0:
-            txt = "Classified as an okay print with " + str(round(prob.max(), 2) * 100) + "% probability"
+            txt = "Classified as an okay print"
         elif pred == 1:
-            txt = "Classified as a failed print with " + str(round(prob.max(), 2) * 100) + "% probability"
+            txt = "Classified as a failed print"
         fig.text(.5, .975, txt, ha='center')
         plt.show()
 
@@ -194,7 +235,36 @@ def makePred(path, model, figures=True, ppc=12, cpb=2, n=16**2):
     return pred, prob.max()
 
 
-path = 'data/prints/prediction/prediction03.jpg'
-
+dire = 'data/image_stream/video' + str(predvid) + '/'
 mod = pickle.load(open("SGDModel.pkl", 'rb'))
-makePred(path, model=mod, ppc=ppc, cpb=cpb, n=n)
+otpred = []
+otprob = []
+otpredi = []
+for i, file in enumerate(sorted(listdir(dire), key=numericalSort)):
+    path = dire + file
+    if i in [1, 12, 15, 20, 25, 30, 38]:
+        a, b = makePred(path, model=mod, ppc=ppc, cpb=cpb, n=n, figures=True)
+    else:
+        a, b = makePred(path, model=mod, ppc=ppc, cpb=cpb, n=n, figures=False)
+    otpred.append(a)
+    otprob.append(b)
+    otpredi.append((i, a))
+ots = [k for k in range(len(otpredi)) if otpredi[k][1] == 1]
+
+inca = 0
+incb = len(otpredi) - d[predvid]
+
+for k in ots:
+    if k < d[predvid]:
+        inca += 1
+    if k > d[predvid]:
+        incb -= 1
+print(round(inca / d[predvid] * 100), "% misclassified below change (", inca, "out of", str(d[predvid]), "values)")
+print(round(incb / (len(otpredi) - d[predvid]) * 100), "% misclassified above change (", incb, "out of", \
+      (len(otpredi) - d[predvid]), "values)")
+if d[predvid] in ots:
+    print("Error point identified correctly")
+elif len(ots) == 0:
+    print("No failure detected")
+else:
+    print("Identified change at", sorted(k for k in ots if k > d[predvid])[0], "when the change occured at", d[predvid])
